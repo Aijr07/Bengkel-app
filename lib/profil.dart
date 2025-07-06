@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/login.dart'; // Sesuaikan dengan path halaman login Anda
+import 'package:flutter_application_1/Login.dart'; // Sesuaikan dengan path halaman login Anda
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -9,7 +9,7 @@ class ProfilePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF121212), // Background utama
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E), // Warna AppBar
+        backgroundColor: const Color.fromARGB(255, 42, 76, 83), // Warna AppBar
         elevation: 0,
         title: const Text(
           'Profil Saya',
