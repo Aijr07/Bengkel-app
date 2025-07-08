@@ -1,6 +1,7 @@
 // lib/BookingService.dart (Versi Lengkap)
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/booking_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -38,79 +39,73 @@ class _BookingPageState extends State<BookingPage> {
 
   // Fungsi utama untuk memproses dan menyimpan pemesanan
   Future<void> _submitBooking() async {
-    // Kumpulkan data dari form
-    final List<String> selectedServices = [];
-    _services.forEach((key, value) {
-      if (value['selected'] == true) {
-        selectedServices.add(key);
-      }
-    });
+  final List<String> selectedServices = [];
+  _services.forEach((key, value) {
+    if (value['selected'] == true) {
+      selectedServices.add(key);
+    }
+  });
 
-    final int totalPrice = _calculateTotalPrice();
-    final String date = _dateController.text;
-    final String details = _detailsController.text;
+  final int totalPrice = _calculateTotalPrice();
+  final String date = _dateController.text;
+  final String details = _detailsController.text;
 
-    // Validasi input
-    if (selectedServices.isEmpty || date.isEmpty) {
-      _showErrorDialog("Harap pilih minimal satu servis dan tentukan tanggal.");
+  if (selectedServices.isEmpty || date.isEmpty) {
+    _showErrorDialog("Harap pilih minimal satu servis dan tentukan tanggal.");
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _showErrorDialog("Anda harus login terlebih dahulu untuk membuat pesanan.");
+      setState(() => _isLoading = false);
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final customerName = user.displayName ?? user.email ?? 'Pelanggan';
 
-    try {
-      // 1. Dapatkan pengguna yang sedang login
-      final User? user = FirebaseAuth.instance.currentUser;
+    final booking = {
+      'customerId': user.uid,
+      'customerName': customerName,
+      'orderDate': date,
+      'services': selectedServices.join(','), // Disimpan sebagai string
+      'totalPrice': totalPrice,
+      'details': details,
+      'status': 'Pesanan Diterima',
+      'createdAt': DateTime.now().toIso8601String(),
+    };
 
-      if (user == null) {
-        _showErrorDialog("Anda harus login terlebih dahulu untuk membuat pesanan.");
-        setState(() => _isLoading = false);
-        return;
-      }
+    await BookingDatabase.instance.insertBooking(booking);
 
-      // Ambil nama pengguna dari profilnya atau gunakan email sebagai fallback
-      final customerName = user.displayName ?? user.email ?? 'Pelanggan';
+    final newHistory = ServiceHistoryModel(
+      id: DateTime.now().toIso8601String(),
+      services: selectedServices,
+      date: date,
+      totalPrice: totalPrice,
+      details: details,
+    );
 
-      // 2. Siapkan data untuk disimpan ke Firestore
-      final Map<String, dynamic> orderData = {
-        'customerId': user.uid,
-        'customerName': customerName,
-        'orderDate': date,
-        'services': selectedServices,
-        'totalPrice': totalPrice,
-        'details': details,
-        'status': 'Pesanan Diterima', // Status awal untuk pesanan baru
-        'createdAt': FieldValue.serverTimestamp(), // Timestamp untuk pengurutan
-      };
+    if (mounted) {
+      Provider.of<HistoryProvider>(context, listen: false).addHistory(newHistory);
+      _showSuccessDialog(totalPrice);
+    }
 
-      // 3. Simpan data ke koleksi 'service_orders' di Firestore
-      await FirebaseFirestore.instance.collection('service_orders').add(orderData);
-
-      // (Opsional) Tetap simpan ke riwayat lokal jika masih diperlukan
-      final newHistory = ServiceHistoryModel(
-        id: DateTime.now().toIso8601String(),
-        services: selectedServices,
-        date: date,
-        totalPrice: totalPrice,
-        details: details,
-      );
-      if (mounted) {
-        Provider.of<HistoryProvider>(context, listen: false).addHistory(newHistory);
-        _showSuccessDialog(totalPrice);
-      }
-
-    } catch (e) {
-      _showErrorDialog("Gagal menyimpan pesanan. Periksa koneksi internet Anda.");
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  } catch (e) {
+    _showErrorDialog("Gagal menyimpan pesanan. Silakan coba lagi.");
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+}
 
   // --- Widget Helper dan Fungsi Lainnya ---
 

@@ -30,45 +30,75 @@ class _loginState extends State<login> {
 
   // --- FUNGSI UTAMA UNTUK PROSES LOGIN ---
   Future<void> _loginUser() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorDialog("Harap isi email dan password.");
+  final input = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+
+  if (input.isEmpty || password.isEmpty) {
+    _showErrorDialog("Harap isi email atau username dan password.");
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final email = await _getEmailFromUsername(input);
+
+    if (email == null) {
+      _showErrorDialog("Akun dengan username/email tersebut tidak ditemukan.");
+      setState(() => _isLoading = false);
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    // Login seperti biasa dengan email dan password
+    final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-    try {
-      // 1. Lakukan proses login dengan Firebase Auth
-      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-      
-      User? user = userCredential.user;
+    User? user = userCredential.user;
 
-      if (user != null && mounted) {
-        // 2. Jika login berhasil, panggil fungsi untuk memeriksa peran (role)
-        await _checkUserRoleAndNavigate(user.uid);
-      }
+    if (user != null && mounted) {
+      await _checkUserRoleAndNavigate(user.uid);
+    }
 
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = "Email atau password salah.";
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        errorMessage = "Email atau password yang Anda masukkan salah.";
-      }
-      _showErrorDialog(errorMessage);
-    } catch (e) {
-      _showErrorDialog("Terjadi kesalahan. Periksa koneksi internet Anda.");
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  } on FirebaseAuthException catch (e) {
+    String errorMessage = "Email atau password salah.";
+    if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      errorMessage = "Email atau password yang Anda masukkan salah.";
+    }
+    _showErrorDialog(errorMessage);
+  } catch (e) {
+    _showErrorDialog("Terjadi kesalahan. Periksa koneksi internet Anda.");
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+}
+
+  Future<String?> _getEmailFromUsername(String input) async {
+  if (input.contains('@')) {
+    // Input sudah berupa email
+    return input;
+  }
+
+  // Jika input berupa username, cari email-nya di Firestore
+  final query = await FirebaseFirestore.instance
+      .collection('users')
+      .where('username', isEqualTo: input)
+      .limit(1)
+      .get();
+
+  if (query.docs.isNotEmpty) {
+    return query.docs.first.data()['email'];
+  }
+
+  return null; // Tidak ditemukan
+}
 
   // --- FUNGSI UNTUK MEMERIKSA PERAN DAN NAVIGASI ---
   Future<void> _checkUserRoleAndNavigate(String uid) async {
@@ -143,7 +173,7 @@ class _loginState extends State<login> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(labelText: 'Email', border: OutlineInputBorder(), filled: true, fillColor: Colors.grey[800]),
+                decoration: InputDecoration(labelText: 'Email atau Username', border: OutlineInputBorder(), filled: true, fillColor: Colors.grey[800]),
                 style: const TextStyle(color: Colors.white),
               ),
               const SizedBox(height: 16),

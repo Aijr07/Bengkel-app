@@ -1,10 +1,9 @@
-// lib/admin_dashboard_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-// Ubah menjadi StatefulWidget karena kita akan mengelola data
+import 'booking_database.dart';
+
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -13,29 +12,55 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  Future<List<Map<String, dynamic>>>? _bookingsFuture;
 
-  // Fungsi untuk logout
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  void _loadBookings() {
+    _bookingsFuture = BookingDatabase.instance.getAllBookings();
+    // _bookingsFuture = BookingDatabase.instance.getAllBookings();
+  }
+
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (Route<dynamic> route) => false);
   }
 
-  // Fungsi untuk mengubah status di Firestore
-  Future<void> _updateStatus(String docId, String newStatus) async {
-    try {
-      await FirebaseFirestore.instance.collection('service_orders').doc(docId).update({
-        'status': newStatus,
-      });
-      // Tampilkan notifikasi sukses
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status berhasil diubah menjadi $newStatus')),
-      );
-    } catch (e) {
-      // Tampilkan notifikasi error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengubah status: $e')),
-      );
-    }
+  void _showDeleteConfirmationDialog(int id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          backgroundColor: const Color.fromARGB(255, 42, 76, 83),
+          title: const Text('Konfirmasi Hapus', style: TextStyle(color: Colors.white)),
+          content: const Text('Apakah Anda yakin ingin menghapus pesanan ini secara permanen?', style: TextStyle(color: Colors.white70)),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal', style: TextStyle(color: Colors.white70)),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: const Text('HAPUS', style: TextStyle(color: Colors.white)),
+              onPressed: () async {
+                final db = await BookingDatabase.instance.database;
+                await db.delete('bookings', where: 'id = ?', whereArgs: [id]);
+                if (mounted) {
+                  Navigator.of(ctx).pop();
+                  setState(() {
+                    _loadBookings();
+                  });
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -54,90 +79,132 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ],
       ),
-      // Gunakan StreamBuilder untuk mendapatkan data real-time dari Firestore
-      body: StreamBuilder<QuerySnapshot>(
-        // 'stream' memberitahu widget untuk mendengarkan perubahan pada koleksi 'service_orders'
-        stream: FirebaseFirestore.instance.collection('service_orders').snapshots(),
-        // 'builder' akan membangun ulang UI setiap kali ada data baru
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _bookingsFuture,
         builder: (context, snapshot) {
-          // Tampilkan loading indicator jika sedang memuat data
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          // Tampilkan pesan error jika terjadi kesalahan
+
           if (snapshot.hasError) {
             return Center(child: Text('Terjadi error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
           }
-          // Tampilkan pesan jika tidak ada data
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+
+          final bookings = snapshot.data ?? [];
+
+          if (bookings.isEmpty) {
             return const Center(child: Text('Belum ada pesanan servis.', style: TextStyle(color: Colors.grey)));
           }
 
-          // Jika ada data, bangun daftar pesanan
-          final serviceDocs = snapshot.data!.docs;
+          double totalIncome = bookings
+              .where((data) => data['status'] == 'Selesai')
+              .fold(0.0, (sum, data) => sum + (data['totalPrice'] as num));
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: serviceDocs.length,
-            itemBuilder: (context, index) {
-              final doc = serviceDocs[index];
-              final data = doc.data() as Map<String, dynamic>;
+          final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+          final formattedIncome = currencyFormatter.format(totalIncome);
 
-              // Ambil data dari dokumen
-              final String customerName = data['customerName'] ?? 'Tanpa Nama';
-              final String currentStatus = data['status'] ?? 'N/A';
-              final List<dynamic> services = data['services'] ?? [];
-
-              // Opsi status yang bisa dipilih
-              final List<String> statusOptions = ['Pesanan Diterima', 'Dalam Antrian', 'Sedang Dikerjakan', 'Selesai'];
-
-              return Card(
+          return Column(
+            children: [
+              Card(
                 color: const Color.fromARGB(255, 42, 76, 83),
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.all(16),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Pelanggan: $customerName',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      const Text(
+                        'Total Pemasukan:',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
                       Text(
-                        'Layanan: ${services.join(', ')}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Status:', style: TextStyle(color: Colors.white, fontSize: 16)),
-                          // Dropdown untuk mengubah status
-                          DropdownButton<String>(
-                            value: currentStatus,
-                            dropdownColor: const Color.fromARGB(255, 42, 76, 83),
-                            style: const TextStyle(color: Colors.white),
-                            items: statusOptions.map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                // Panggil fungsi update saat status baru dipilih
-                                _updateStatus(doc.id, newValue);
-                              }
-                            },
-                          ),
-                        ],
+                        formattedIncome,
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
-              );
-            },
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: bookings.length,
+                  itemBuilder: (context, index) {
+                    final data = bookings[index];
+                    final int id = data['id'] as int;
+                    final String customerName = data['customerName'] ?? 'Tanpa Nama';
+                    final String currentStatus = data['status'] ?? 'N/A';
+                    final List<String> services = (data['services'] as String).split(',');
+                    final List<String> statusOptions = ['Pesanan Diterima', 'Dalam Antrian', 'Sedang Dikerjakan', 'Selesai'];
+
+                    return Card(
+                      color: const Color.fromARGB(255, 42, 76, 83),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Pelanggan: $customerName',
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (currentStatus == 'Selesai')
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                                    tooltip: 'Hapus Pesanan',
+                                    onPressed: () => _showDeleteConfirmationDialog(id),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text('Layanan: ${services.join(', ')}', style: const TextStyle(color: Colors.white70)),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Status:', style: TextStyle(color: Colors.white, fontSize: 16)),
+                                DropdownButton<String>(
+                                  value: currentStatus,
+                                  dropdownColor: const Color.fromARGB(255, 42, 76, 83),
+                                  style: const TextStyle(color: Colors.white),
+                                  items: statusOptions.map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) async {
+                                    if (newValue != null) {
+                                      final db = await BookingDatabase.instance.database;
+                                      await db.update(
+                                        'bookings',
+                                        {'status': newValue},
+                                        where: 'id = ?',
+                                        whereArgs: [id],
+                                      );
+                                      setState(() {
+                                        _loadBookings();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
