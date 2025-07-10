@@ -3,7 +3,6 @@ import 'package:flutter_application_1/booking_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'history_provider.dart';
 import 'service_history_model.dart';
@@ -207,7 +206,7 @@ class _BookingPageState extends State<BookingPage> {
               padding: const EdgeInsets.only(bottom: 12.0),
               child: _buildServiceCheckbox(entry.key),
             );
-          }).toList(),
+          }),
           const SizedBox(height: 20),
 
           const Text('Pilih Waktu Servis', style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
