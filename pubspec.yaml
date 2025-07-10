@@ -71,7 +71,7 @@ flutter:
   assets:
     - assets/
     # Jika Anda ingin mendaftarkan file satu per satu, formatnya seperti ini:
-    - assets/images/tes.jpg
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

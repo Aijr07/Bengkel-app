@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-
 import 'booking_database.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -13,6 +12,7 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Future<List<Map<String, dynamic>>>? _bookingsFuture;
+  double _totalIncome = 0.0;
 
   @override
   void initState() {
@@ -20,9 +20,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     _loadBookings();
   }
 
-  void _loadBookings() {
-    _bookingsFuture = BookingDatabase.instance.getAllBookings();
-    // _bookingsFuture = BookingDatabase.instance.getAllBookings();
+  void _loadBookings() async {
+    setState(() {
+      _bookingsFuture = BookingDatabase.instance.getAllBookings();
+    });
+    final income = await BookingDatabase.instance.getTotalIncome();
+    if (mounted) {
+      setState(() {
+        _totalIncome = income;
+      });
+    }
   }
 
   void _logout(BuildContext context) async {
@@ -51,9 +58,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 await db.delete('bookings', where: 'id = ?', whereArgs: [id]);
                 if (mounted) {
                   Navigator.of(ctx).pop();
-                  setState(() {
-                    _loadBookings();
-                  });
+                  _loadBookings();
                 }
               },
             ),
@@ -65,6 +70,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final formattedIncome = currencyFormatter.format(_totalIncome);
+
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
@@ -95,13 +103,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           if (bookings.isEmpty) {
             return const Center(child: Text('Belum ada pesanan servis.', style: TextStyle(color: Colors.grey)));
           }
-
-          double totalIncome = bookings
-              .where((data) => data['status'] == 'Selesai')
-              .fold(0.0, (sum, data) => sum + (data['totalPrice'] as num));
-
-          final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-          final formattedIncome = currencyFormatter.format(totalIncome);
 
           return Column(
             children: [
@@ -189,9 +190,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                         where: 'id = ?',
                                         whereArgs: [id],
                                       );
-                                      setState(() {
-                                        _loadBookings();
-                                      });
+                                      _loadBookings(); // reload data dan income
                                     }
                                   },
                                 ),

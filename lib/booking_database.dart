@@ -9,6 +9,7 @@ class BookingDatabase {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
+
     _database = await _initDB('bookings.db');
     return _database!;
   }
@@ -40,18 +41,60 @@ class BookingDatabase {
     ''');
   }
 
-  Future<void> insertBooking(Map<String, dynamic> booking) async {
+  /// Menyimpan booking baru ke tabel bookings
+  Future<int> insertBooking(Map<String, dynamic> bookingData) async {
     final db = await instance.database;
-    await db.insert('bookings', booking);
+    return await db.insert('bookings', bookingData);
   }
 
-    Future<List<Map<String, dynamic>>> getAllBookings() async {
+  /// Mendapatkan semua data booking
+  Future<List<Map<String, dynamic>>> getAllBookings() async {
     final db = await instance.database;
-    return await db.query(
-      'bookings',
-      orderBy: 'createdAt DESC',
-    );
+    return await db.query('bookings', orderBy: 'id DESC');
   }
+
+  /// Mendapatkan total pemasukan dari pesanan yang statusnya 'Selesai'
+  Future<double> getTotalIncome() async {
+    final db = await instance.database;
+    final result = await db.rawQuery(
+      "SELECT SUM(totalPrice) as total FROM bookings WHERE status = 'Selesai'"
+    );
+    return result.first['total'] != null
+        ? (result.first['total'] as num).toDouble()
+        : 0.0;
+  }
+  // booking_database.dart (tambahkan method ini)
+  Future<String?> getLatestStatusByUserId(String userId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'bookings',
+      where: 'customerId = ?',
+      whereArgs: [userId],
+      orderBy: 'createdAt DESC',
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['status'] as String?;
+    } else {
+      return null;
+    }
+  }
+
+  Future<bool> hasActiveBooking(String userId) async {
+  final db = await instance.database;
+  final result = await db.query(
+    'bookings',
+    where: 'customerId = ? AND status != ?',
+    whereArgs: [userId, 'Selesai'],
+    orderBy: 'createdAt DESC',
+    limit: 1,
+  );
+
+  return result.isNotEmpty;
+}
+
+
   Future close() async {
     final db = await instance.database;
     db.close();

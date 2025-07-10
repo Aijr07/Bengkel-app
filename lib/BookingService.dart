@@ -1,5 +1,3 @@
-// lib/BookingService.dart (Versi Lengkap)
-
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/booking_database.dart';
 import 'package:intl/intl.dart';
@@ -18,7 +16,6 @@ class BookingPage extends StatefulWidget {
 }
 
 class _BookingPageState extends State<BookingPage> {
-  // Data servis beserta harga dan status pilihannya
   final Map<String, Map<String, dynamic>> _services = {
     'Ganti Oli': {'price': 150000, 'selected': false, 'icon': Icons.opacity},
     'Servis Ringan': {'price': 250000, 'selected': false, 'icon': Icons.build_circle_outlined},
@@ -37,77 +34,79 @@ class _BookingPageState extends State<BookingPage> {
     super.dispose();
   }
 
-  // Fungsi utama untuk memproses dan menyimpan pemesanan
   Future<void> _submitBooking() async {
-  final List<String> selectedServices = [];
-  _services.forEach((key, value) {
-    if (value['selected'] == true) {
-      selectedServices.add(key);
-    }
-  });
+    final List<String> selectedServices = [];
+    _services.forEach((key, value) {
+      if (value['selected'] == true) {
+        selectedServices.add(key);
+      }
+    });
 
-  final int totalPrice = _calculateTotalPrice();
-  final String date = _dateController.text;
-  final String details = _detailsController.text;
+    final int totalPrice = _calculateTotalPrice();
+    final String date = _dateController.text;
+    final String details = _detailsController.text;
 
-  if (selectedServices.isEmpty || date.isEmpty) {
-    _showErrorDialog("Harap pilih minimal satu servis dan tentukan tanggal.");
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-  });
-
-  try {
-    final User? user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      _showErrorDialog("Anda harus login terlebih dahulu untuk membuat pesanan.");
-      setState(() => _isLoading = false);
+    if (selectedServices.isEmpty || date.isEmpty) {
+      _showErrorDialog("Harap pilih minimal satu servis dan tentukan tanggal.");
       return;
     }
 
-    final customerName = user.displayName ?? user.email ?? 'Pelanggan';
+    setState(() {
+      _isLoading = true;
+    });
 
-    final booking = {
-      'customerId': user.uid,
-      'customerName': customerName,
-      'orderDate': date,
-      'services': selectedServices.join(','), // Disimpan sebagai string
-      'totalPrice': totalPrice,
-      'details': details,
-      'status': 'Pesanan Diterima',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
 
-    await BookingDatabase.instance.insertBooking(booking);
+      if (user == null) {
+        _showErrorDialog("Anda harus login terlebih dahulu untuk membuat pesanan.");
+        setState(() => _isLoading = false);
+        return;
+      }
 
-    final newHistory = ServiceHistoryModel(
-      id: DateTime.now().toIso8601String(),
-      services: selectedServices,
-      date: date,
-      totalPrice: totalPrice,
-      details: details,
-    );
+      final bool hasActive = await BookingDatabase.instance.hasActiveBooking(user.uid);
+      if (hasActive) {
+        _showErrorDialog("Anda masih memiliki pesanan yang sedang diproses. Silakan tunggu hingga selesai.");
+        setState(() => _isLoading = false);
+        return;
+      }
 
-    if (mounted) {
-      Provider.of<HistoryProvider>(context, listen: false).addHistory(newHistory);
-      _showSuccessDialog(totalPrice);
-    }
+      final customerName = user.displayName ?? user.email ?? 'Pelanggan';
+      final booking = {
+        'customerId': user.uid,
+        'customerName': customerName,
+        'orderDate': date,
+        'services': selectedServices.join(','),
+        'totalPrice': totalPrice,
+        'details': details,
+        'status': 'Pesanan Diterima',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
 
-  } catch (e) {
-    _showErrorDialog("Gagal menyimpan pesanan. Silakan coba lagi.");
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      await BookingDatabase.instance.insertBooking(booking);
+
+      final newHistory = ServiceHistoryModel(
+        id: DateTime.now().toIso8601String(),
+        services: selectedServices,
+        date: date,
+        totalPrice: totalPrice,
+        details: 'Pesanan Diterima',
+      );
+
+      if (mounted) {
+        Provider.of<HistoryProvider>(context, listen: false).addHistory(newHistory);
+        _showSuccessDialog(totalPrice);
+      }
+    } catch (e) {
+      _showErrorDialog("Gagal menyimpan pesanan. Silakan coba lagi.");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
-
-  // --- Widget Helper dan Fungsi Lainnya ---
 
   int _calculateTotalPrice() {
     int total = 0;
@@ -118,7 +117,7 @@ class _BookingPageState extends State<BookingPage> {
     });
     return total;
   }
-  
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -126,7 +125,7 @@ class _BookingPageState extends State<BookingPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2101),
       builder: (context, child) {
-        return Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: Color(0xFF32CD32), onPrimary: Colors.black, onSurface: Colors.white)), child: child!);
+        return Theme(data: ThemeData.light().copyWith(colorScheme: const ColorScheme.light(primary: Colors.blueAccent, onPrimary: Colors.white, onSurface: Colors.black)), child: child!);
       },
     );
     if (picked != null) {
@@ -146,27 +145,27 @@ class _BookingPageState extends State<BookingPage> {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     showDialog(context: context, barrierDismissible: false, builder: (ctx) => AlertDialog(title: const Text('Pemesanan Berhasil'), content: Text('Total pembayaran Anda adalah ${currencyFormatter.format(totalPrice)}. Admin akan segera memproses pesanan Anda.'), actions: [TextButton(child: const Text('Selesai'), onPressed: () { Navigator.of(ctx).pop(); Navigator.of(context).pop(); })]));
   }
-  
-  // Widget untuk membuat setiap baris checkbox servis
+
   Widget _buildServiceCheckbox(String title) {
     final service = _services[title]!;
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2C),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blueAccent),
       ),
       child: CheckboxListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         title: Row(
           children: [
-            Icon(service['icon'] as IconData, color: const Color(0xFF32CD32)),
+            Icon(service['icon'] as IconData, color: Colors.blueAccent),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text(title, style: const TextStyle(color: Colors.black, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(currencyFormatter.format(service['price']), style: const TextStyle(color: Colors.grey, fontSize: 14)),
               ],
@@ -179,21 +178,21 @@ class _BookingPageState extends State<BookingPage> {
             _services[title]!['selected'] = value!;
           });
         },
-        activeColor: const Color(0xFF32CD32),
+        activeColor: Colors.blueAccent,
         checkColor: Colors.black,
         controlAffinity: ListTileControlAffinity.trailing,
-        side: const BorderSide(color: Colors.grey),
+        side: const BorderSide(color: Colors.blueAccent),
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: Colors.white, // Ganti background menjadi putih
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 42, 76, 83),
+        backgroundColor: Colors.blueAccent, // Ganti warna AppBar menjadi biru
         elevation: 0,
         title: const Text('Halaman Pemesanan Service', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -201,7 +200,7 @@ class _BookingPageState extends State<BookingPage> {
       body: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
-          const Text('Pilih Servis', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('Pilih Servis', style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           ..._services.entries.map((entry) {
             return Padding(
@@ -210,32 +209,32 @@ class _BookingPageState extends State<BookingPage> {
             );
           }).toList(),
           const SizedBox(height: 20),
-          
-          const Text('Pilih Waktu Servis', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+
+          const Text('Pilih Waktu Servis', style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           TextField(
             controller: _dateController,
             readOnly: true,
             onTap: () => _selectDate(context),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(hintText: 'dd-mm-yyyy', hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF2C2C2C), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none)),
+            style: const TextStyle(color: Colors.black),
+            decoration: InputDecoration(hintText: 'dd-mm-yyyy', hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFFF0F0F0), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none)),
           ),
           const SizedBox(height: 32),
-          
-          const Text('Detail Tambahan', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+
+          const Text('Detail Tambahan', style: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           TextField(
             controller: _detailsController,
             maxLines: 4,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(hintText: 'Masukkan tambahan spesifik servis', hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFF2C2C2C), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none)),
+            style: const TextStyle(color: Colors.black),
+            decoration: InputDecoration(hintText: 'Masukkan tambahan spesifik servis', hintStyle: const TextStyle(color: Colors.grey), filled: true, fillColor: const Color(0xFFF0F0F0), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none)),
           ),
           const SizedBox(height: 30),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Total Harga', style: TextStyle(color: Colors.grey, fontSize: 16)),
-              Text(currencyFormatter.format(_calculateTotalPrice()), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(currencyFormatter.format(_calculateTotalPrice()), style: const TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 24),
@@ -245,7 +244,7 @@ class _BookingPageState extends State<BookingPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _submitBooking,
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 42, 76, 83), foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: const Text('Konfirmasi Servis', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
               ),

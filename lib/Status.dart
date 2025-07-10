@@ -1,10 +1,7 @@
-// lib/Status.dart (Versi Dinamis)
-
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/booking_database.dart';
 
-// Enum untuk status tetap kita gunakan
 enum StepStatus { completed, inProgress, pending }
 
 class StatusServicePage extends StatefulWidget {
@@ -15,60 +12,65 @@ class StatusServicePage extends StatefulWidget {
 }
 
 class _StatusServicePageState extends State<StatusServicePage> {
-  // --- PERUBAHAN UTAMA: Gunakan StreamBuilder untuk data dinamis ---
+  late Future<String?> _statusFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusFuture = _fetchLatestStatus();
+  }
+
+  Future<String?> _fetchLatestStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    return await BookingDatabase.instance.getLatestStatusByUserId(user.uid);
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Dapatkan ID pengguna yang sedang login
-    final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 42, 76, 83),
-        elevation: 0,
-        title: const Text('Status Service Anda', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      // Cek apakah ada pengguna yang login. Jika tidak, tampilkan pesan.
-      body: currentUserId == null
-          ? const Center(child: Text("Silakan login untuk melihat status servis.", style: TextStyle(color: Colors.grey)))
-          : StreamBuilder<QuerySnapshot>(
-              // 'stream' sekarang memiliki query '.where()'
-              // Ini hanya akan mengambil dokumen di mana field 'customerId' sama dengan ID pengguna yang sedang login
-              stream: FirebaseFirestore.instance
-                  .collection('service_orders')
-                  .where('customerId', isEqualTo: currentUserId)
-                  .orderBy('createdAt', descending: true) // Urutkan agar pesanan terbaru di atas
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Terjadi error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('Anda belum memiliki pesanan servis aktif.', style: TextStyle(color: Colors.grey)));
-                }
-
-                // Ambil dokumen pesanan yang paling baru (karena sudah diurutkan)
-                final latestOrderDoc = snapshot.data!.docs.first;
-                final latestOrderData = latestOrderDoc.data() as Map<String, dynamic>;
-
-                // Panggil widget utama yang membangun timeline berdasarkan data pesanan terbaru
-                return _buildStatusTimeline(latestOrderData);
-              },
+    return FutureBuilder<String?>(
+      future: _statusFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: Colors.white, // Ganti background menjadi putih
+            appBar: AppBar(
+              backgroundColor: Colors.blueAccent, // Warna biru untuk AppBar
+              title: const Text('Status Servis Anda', style: TextStyle(color: Colors.white)),
             ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: Colors.white, // Ganti background menjadi putih
+            appBar: AppBar(
+              backgroundColor: Colors.blueAccent, // Warna biru untuk AppBar
+              title: const Text('Status Servis Anda', style: TextStyle(color: Colors.white)),
+            ),
+            body: Center(child: Text('Terjadi error: ${snapshot.error}', style: const TextStyle(color: Colors.black))),
+          );
+        }
+
+        final currentStatus = snapshot.data ?? 'Pesanan Diterima';
+
+        return Scaffold(
+          backgroundColor: Colors.white, // Ganti background menjadi putih
+          appBar: AppBar(
+            backgroundColor: Colors.blueAccent, // Warna biru untuk AppBar
+            title: const Text('Status Servis Anda', style: TextStyle(color: Colors.white)),
+          ),
+          body: _buildStatusTimeline(currentStatus),
+        );
+      },
     );
   }
 
-  // Widget baru untuk membangun seluruh timeline
-  Widget _buildStatusTimeline(Map<String, dynamic> orderData) {
-    // Ambil status saat ini dari data
-    final String currentStatus = orderData['status'] ?? 'N/A';
-    
-    // Definisikan semua langkah yang mungkin
+  Widget _buildStatusTimeline(String currentStatus) {
+    final statusList = ['Pesanan Diterima', 'Dalam Antrian', 'Sedang Dikerjakan', 'Selesai'];
+    final statusIndex = statusList.indexOf(currentStatus);
+
     final List<Map<String, dynamic>> serviceSteps = [
       {'title': 'Pesanan Diterima', 'subtitle': 'Pesanan Anda telah dikonfirmasi.', 'icon': Icons.receipt_long},
       {'title': 'Dalam Antrian', 'subtitle': 'Motor Anda sedang menunggu giliran.', 'icon': Icons.queue},
@@ -76,42 +78,31 @@ class _StatusServicePageState extends State<StatusServicePage> {
       {'title': 'Selesai', 'subtitle': 'Servis telah selesai, siap diambil.', 'icon': Icons.check_circle},
     ];
 
-    // Tentukan status untuk setiap langkah berdasarkan status saat ini
-    final statusMapping = {
-      'Pesanan Diterima': 0,
-      'Dalam Antrian': 1,
-      'Sedang Dikerjakan': 2,
-      'Selesai': 3,
-    };
-    int currentStepIndex = statusMapping[currentStatus] ?? -1;
-
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+      padding: const EdgeInsets.all(24.0),
       itemCount: serviceSteps.length,
       itemBuilder: (context, index) {
         final step = serviceSteps[index];
-        StepStatus status;
-
-        if (index < currentStepIndex) {
-          status = StepStatus.completed; // Langkah-langkah sebelumnya dianggap selesai
-        } else if (index == currentStepIndex) {
-          status = StepStatus.inProgress; // Langkah saat ini sedang berjalan
+        StepStatus stepStatus;
+        if (index < statusIndex) {
+          stepStatus = StepStatus.completed;
+        } else if (index == statusIndex) {
+          stepStatus = StepStatus.inProgress;
         } else {
-          status = StepStatus.pending; // Langkah-langkah berikutnya masih menunggu
+          stepStatus = StepStatus.pending;
         }
 
         return _buildStatusStep(
           title: step['title'],
           subtitle: step['subtitle'],
           icon: step['icon'],
-          status: status,
+          status: stepStatus,
           isLastStep: index == serviceSteps.length - 1,
         );
       },
     );
   }
 
-  // Widget helper untuk membuat setiap langkah (tidak ada perubahan signifikan)
   Widget _buildStatusStep({
     required String title,
     required String subtitle,
@@ -124,16 +115,16 @@ class _StatusServicePageState extends State<StatusServicePage> {
 
     switch (status) {
       case StepStatus.completed:
-        iconColor = const Color(0xFF32CD32); // Hijau
-        textColor = Colors.white;
+        iconColor = Colors.blueAccent; // Ganti warna icon menjadi biru
+        textColor = Colors.black; // Teks warna hitam untuk status selesai
         break;
       case StepStatus.inProgress:
-        iconColor = Colors.orange;
-        textColor = Colors.white;
+        iconColor = Colors.orange; // Ganti warna icon untuk status sedang dikerjakan
+        textColor = Colors.black; // Teks warna hitam untuk status sedang dikerjakan
         break;
       case StepStatus.pending:
-        iconColor = Colors.grey.shade600;
-        textColor = Colors.grey.shade600;
+        iconColor = Colors.grey; // Ganti warna icon untuk status pending
+        textColor = Colors.grey; // Teks warna abu-abu untuk status pending
         break;
     }
 
@@ -145,23 +136,17 @@ class _StatusServicePageState extends State<StatusServicePage> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(shape: BoxShape.circle, color: iconColor.withOpacity(0.15)),
-                child: Icon(icon, color: iconColor, size: 24),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: iconColor.withOpacity(0.2)),
+                child: Icon(icon, color: iconColor),
               ),
               if (!isLastStep)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: status == StepStatus.completed ? iconColor : Colors.grey.shade800,
-                  ),
-                ),
+                Expanded(child: Container(width: 2, color: iconColor.withOpacity(0.3))),
             ],
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(title, style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
@@ -169,7 +154,7 @@ class _StatusServicePageState extends State<StatusServicePage> {
                 if (!isLastStep) const SizedBox(height: 48),
               ],
             ),
-          ),
+          )
         ],
       ),
     );

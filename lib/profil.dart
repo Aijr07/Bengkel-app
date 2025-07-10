@@ -7,9 +7,9 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Background utama
+      backgroundColor: Colors.white, // Ganti background menjadi putih
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 42, 76, 83), // Warna AppBar
+        backgroundColor: Colors.blueAccent, // Warna biru untuk AppBar
         elevation: 0,
         title: const Text(
           'Profil Saya',
@@ -37,7 +37,7 @@ class ProfilePage extends StatelessWidget {
               const Text(
                 'Ahmad Syahid', // Ganti dengan nama pengguna
                 style: TextStyle(
-                  color: Colors.white,
+                  color: Colors.black, // Ganti warna teks menjadi hitam
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -46,7 +46,7 @@ class ProfilePage extends StatelessWidget {
               const Text(
                 'ahmad.syahid@example.com', // Ganti dengan email pengguna
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Colors.grey, // Warna teks email tetap abu-abu
                   fontSize: 16,
                 ),
               ),
@@ -89,7 +89,7 @@ class ProfilePage extends StatelessWidget {
           ),
 
           const SizedBox(height: 20),
-          const Divider(color: Color(0xFF2C2C2C)),
+          const Divider(color: Colors.blueAccent), // Divider berwarna biru
           const SizedBox(height: 10),
 
           // Tombol Logout
@@ -115,7 +115,7 @@ class ProfilePage extends StatelessWidget {
                         // Kembali ke halaman login dan hapus semua halaman sebelumnya
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const login()),
+                          MaterialPageRoute(builder: (context) => const Login()),
                           (Route<dynamic> route) => false,
                         );
                       },
@@ -136,7 +136,7 @@ class ProfilePage extends StatelessWidget {
     required IconData icon,
     required String text,
     required VoidCallback onTap,
-    Color textColor = Colors.white,
+    Color textColor = Colors.black, // Ganti warna teks menjadi hitam
   }) {
     return ListTile(
       leading: Icon(
@@ -147,7 +147,7 @@ class ProfilePage extends StatelessWidget {
       title: Text(
         text,
         style: TextStyle(
-          color: textColor,
+          color: textColor, // Warna teks disesuaikan
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
