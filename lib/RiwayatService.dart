@@ -12,9 +12,9 @@ class HistoryPage extends StatelessWidget {
     final historyProvider = Provider.of<HistoryProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: const Color(0xFFF5F5F5), // White background
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 42, 76, 83),
+        backgroundColor: Colors.blueAccent, // Blue color for AppBar
         elevation: 0,
         title: const Text('Halaman Riwayat Servis',
             style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -65,8 +65,15 @@ class HistoryPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 42, 76, 83),
+        color: Colors.white, // White background for card
         borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,19 +84,19 @@ class HistoryPage extends StatelessWidget {
               Expanded(
                 child: Text(
                   servicesText,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               ElevatedButton(
                 onPressed: () => _showDetailDialog(context, history),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: Colors.blueAccent, // Ganti 'primary' dengan 'backgroundColor'
+                  foregroundColor: Colors.white, // Ganti 'onPrimary' dengan 'foregroundColor'
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
                 child: const Text('Detail'),
-              ),
+              )
             ],
           ),
           const SizedBox(height: 8),
@@ -107,7 +114,7 @@ class HistoryPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: const Color(0xFF1E1E1E), // Dark background for dialog
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Detail Riwayat Servis', style: TextStyle(color: Colors.white)),
         content: Column(

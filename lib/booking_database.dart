@@ -1,3 +1,4 @@
+import 'package:flutter_application_1/service_history_model.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -9,7 +10,6 @@ class BookingDatabase {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-
     _database = await _initDB('bookings.db');
     return _database!;
   }
@@ -45,6 +45,16 @@ class BookingDatabase {
   Future<int> insertBooking(Map<String, dynamic> bookingData) async {
     final db = await instance.database;
     return await db.insert('bookings', bookingData);
+  }
+  // Update status booking
+  Future<void> updateBookingStatus(String bookingId, String newStatus) async {
+    final db = await instance.database;
+    await db.update(
+      'bookings',
+      {'status': newStatus},
+      where: 'id = ?',
+      whereArgs: [bookingId],
+    );
   }
 
   /// Mendapatkan semua data booking
@@ -93,6 +103,19 @@ class BookingDatabase {
 
   return result.isNotEmpty;
 }
+
+// Menyimpan riwayat servis
+  Future<void> insertServiceHistory(String userId, ServiceHistoryModel history) async {
+    final db = await instance.database;
+    await db.insert('service_history', {
+      'userId': userId,
+      'services': history.services.join(','),
+      'date': history.date,
+      'totalPrice': history.totalPrice,
+      'details': history.details ?? '',
+      'status': history.status,
+    });
+  }
 
 
   Future close() async {

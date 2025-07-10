@@ -3,7 +3,6 @@ import 'package:flutter_application_1/booking_database.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'history_provider.dart';
 import 'service_history_model.dart';
 
@@ -90,6 +89,7 @@ class _BookingPageState extends State<BookingPage> {
         date: date,
         totalPrice: totalPrice,
         details: 'Pesanan Diterima',
+        status: 'Pesanan Diterima',
       );
 
       if (mounted) {
@@ -147,7 +147,6 @@ class _BookingPageState extends State<BookingPage> {
 
   Widget _buildServiceCheckbox(String title) {
     final service = _services[title]!;
-    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -166,7 +165,7 @@ class _BookingPageState extends State<BookingPage> {
               children: [
                 Text(title, style: const TextStyle(color: Colors.black, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text(currencyFormatter.format(service['price']), style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(service['price']), style: const TextStyle(color: Colors.grey, fontSize: 14)),
               ],
             ),
           ],
@@ -189,9 +188,9 @@ class _BookingPageState extends State<BookingPage> {
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     return Scaffold(
-      backgroundColor: Colors.white, // Ganti background menjadi putih
+      backgroundColor: Colors.white, 
       appBar: AppBar(
-        backgroundColor: Colors.blueAccent, // Ganti warna AppBar menjadi biru
+        backgroundColor: Colors.blueAccent, 
         elevation: 0,
         title: const Text('Halaman Pemesanan Service', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: Colors.white),
