@@ -6,6 +6,7 @@ import 'package:flutter_application_1/Profil.dart';
 import 'package:flutter_application_1/Setting.dart';
 import 'package:flutter_application_1/Status.dart';
 import 'package:firebase_auth/firebase_auth.dart'; // Import FirebaseAuth
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,12 +26,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Ambil informasi pengguna yang sedang login
-  void _getUserInfo() {
+  void _getUserInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      setState(() {
-        _userName = user.displayName ?? user.email ?? 'Pengguna'; // Menampilkan displayName atau email
-      });
+      // Ambil fullName berdasarkan uid
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        setState(() {
+          _userName = userDoc['fullName']; // Mengambil fullName dari Firestore
+        });
+      } else {
+        setState(() {
+          _userName = user.email ?? 'Pengguna'; // Menampilkan email jika tidak ditemukan fullName
+        });
+      }
     }
   }
 
@@ -99,40 +108,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPromoCard(Map<String, String> promo) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 5,
-      child: ListTile(
-        leading: Icon(
-          promo['icon'] == 'promo'
-              ? Icons.local_offer
-              : Icons.lightbulb_outline,
-          color: Colors.blueAccent,
-          size: 32,
-        ),
-        title: Text(
-          promo['title']!,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          promo['subtitle']!,
-          style: const TextStyle(color: Colors.grey),
-        ),
-        onTap: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Info: ${promo['title']!}')));
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,7 +141,7 @@ class _HomePageState extends State<HomePage> {
                   CircleAvatar(radius: 14, backgroundColor: Color(0xFFD9D9D9)),
                   SizedBox(width: 8),
                   Text(
-                    _userName,  // Menampilkan nama pengguna
+                    _userName,  // Menampilkan nama pengguna yang login
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ],
@@ -179,7 +154,7 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
         children: [
           const Text(
-            'Selamat Datang, Ahmad!',
+            'Selamat Datang!',
             style: TextStyle(
               color: Colors.black,
               fontSize: 24,
@@ -230,7 +205,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: const Color.fromARGB(255, 0, 94, 255),
         type: BottomNavigationBarType.fixed,
         unselectedItemColor: Colors.white70,
         currentIndex: _selectedIndex,
