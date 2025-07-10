@@ -42,7 +42,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          backgroundColor: const Color.fromARGB(255, 42, 76, 83),
+          backgroundColor: const Color(0xFF1976D2), // Biru tua
           title: const Text('Konfirmasi Hapus', style: TextStyle(color: Colors.white)),
           content: const Text('Apakah Anda yakin ingin menghapus pesanan ini secara permanen?', style: TextStyle(color: Colors.white70)),
           actions: <Widget>[
@@ -74,10 +74,10 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final formattedIncome = currencyFormatter.format(_totalIncome);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: Colors.white, // White background for the page
       appBar: AppBar(
         title: const Text('Kelola Pesanan Servis'),
-        backgroundColor: const Color.fromARGB(255, 42, 76, 83),
+        backgroundColor: Colors.blueAccent, // Biru untuk AppBar
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
@@ -87,7 +87,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
+      body: FutureBuilder<List<Map<String, dynamic>>>( 
         future: _bookingsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -95,7 +95,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Terjadi error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+            return Center(child: Text('Terjadi error: ${snapshot.error}', style: const TextStyle(color: Colors.black)));
           }
 
           final bookings = snapshot.data ?? [];
@@ -107,7 +107,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           return Column(
             children: [
               Card(
-                color: const Color.fromARGB(255, 42, 76, 83),
+                color: Colors.blueAccent, // Biru pada card untuk total pemasukan
                 margin: const EdgeInsets.all(16),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -115,7 +115,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Total Pemasukan:',
+                        'Total Pemasukan: ',
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
@@ -139,7 +139,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     final List<String> statusOptions = ['Pesanan Diterima', 'Dalam Antrian', 'Sedang Dikerjakan', 'Selesai'];
 
                     return Card(
-                      color: const Color.fromARGB(255, 42, 76, 83),
+                      color: Colors.blueAccent, // Biru untuk card layanan
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -173,7 +173,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                 const Text('Status:', style: TextStyle(color: Colors.white, fontSize: 16)),
                                 DropdownButton<String>(
                                   value: currentStatus,
-                                  dropdownColor: const Color.fromARGB(255, 42, 76, 83),
+                                  dropdownColor: Colors.blueAccent, // Biru pada dropdown
                                   style: const TextStyle(color: Colors.white),
                                   items: statusOptions.map((String value) {
                                     return DropdownMenuItem<String>(
